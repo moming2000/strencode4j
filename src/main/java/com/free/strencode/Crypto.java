@@ -32,12 +32,13 @@ public class Crypto {
         Crypto.licenseKey=licenseKey;
         Crypto.url=url;
         //System.load("/Users/fbtb102/working/txencode/target/x86_64-apple-darwin/debug/libtxencode.dylib");
-        String so = loadFile();
+        String appId = AppIdUtil.getAppId(Crypto.class);
+        String so = loadFile(appId);
         System.load(so);
-        init(Crypto.appName,AppIdUtil.getAppId(Crypto.class),Crypto.licenseKey, Crypto.url);
+        init(Crypto.appName,appId,Crypto.licenseKey, Crypto.url);
     }
 
-    private static String loadFile()  {
+    private static String loadFile(String appId)  {
         try {
             String os = System.getProperty("os.name").toLowerCase();
             if (os.contains("win")) {
@@ -49,40 +50,51 @@ public class Crypto {
             }else{
                 os = "linux";
             }
+            // 缓存
+            File dir = new File("rcache/"+ appId);
+            File zip = new File(dir.getAbsolutePath()+"/"+appId+".zip");
+            File version = new File(dir.getAbsolutePath()+"/version.txt");
+            String versionIdName="VERSION-ID";
+            String versionId="";
+            if(version.exists()){
+                versionId = new String(Files.readAllBytes(version.toPath()));
+            }
             // 1. 下载
             URL url = new URL(Crypto.url + "/api/download/");
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+            if(!versionId.isEmpty()){
+                 conn.setRequestProperty(versionIdName,versionId);
+            }
             val request = new DownLoadRequest();request.setAppName(Crypto.appName);request.setOs(os);
             // 写入 body
             try (OutputStream oss = conn.getOutputStream()) {
                 byte[] input = JsonUtil.serialize(request).getBytes(StandardCharsets.UTF_8);
                 oss.write(input);
             }
-            String dir = "rcache/"+ UUID.randomUUID().toString().replace("-","");
-            String zip = dir+"/rust.zip";
-            //删除缓存目录
-            Runtime.getRuntime().addShutdownHook(
-                    new Thread(() -> {
-                        try {
-                            FileUtils.deleteDirectory(new File(dir));
-                        }catch (Exception e){}
-                    })
-            );
-            File temp = new File(zip);
-            try (InputStream in = conn.getInputStream()) {
-                FileUtils.createParentDirectories(temp.getAbsoluteFile());
-                // 3. 写入文件
-                Files.copy(in, temp.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                in.close();
-                //return ;
+            val newVersionId=conn.getHeaderField(versionIdName);
+            if(!versionId.isEmpty()&&versionId.equals(newVersionId)){
+                //
+            }else {
+                try (InputStream in = conn.getInputStream()) {
+                    FileUtils.createParentDirectories(zip.getAbsoluteFile());
+                    // 3. 写入文件
+                    Files.copy(in, zip.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    in.close();
+                    //return ;
+                }
+                ZipUtil.unzip(zip.getAbsolutePath(), dir.getAbsolutePath());
+                //及时清理文件
+                try {
+                    zip.delete();
+                } catch (Exception e) {
+                }
             }
-            ZipUtil.unzip(temp.getAbsolutePath(),dir);
-            //及时清理文件
-            try{temp.delete();}catch (Exception e){}
-            return getRustFile(dir);
+            String rustFile = getRustFile(dir.getAbsolutePath());
+            Files.write(version.toPath(),newVersionId.getBytes());
+            return rustFile;
         }catch (Exception e){
             throw new RuntimeException("加密包加载异常",e);
         }
