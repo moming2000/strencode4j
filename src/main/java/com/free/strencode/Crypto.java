@@ -74,6 +74,9 @@ public class Crypto {
                 byte[] input = JsonUtil.serialize(request).getBytes(StandardCharsets.UTF_8);
                 oss.write(input);
             }
+            if(conn.getResponseCode()!=200){
+                throw new RuntimeException("加密包获取异常");
+            }
             val newVersionId=conn.getHeaderField(versionIdName);
             if(!versionId.isEmpty()&&versionId.equals(newVersionId)){
                 //
