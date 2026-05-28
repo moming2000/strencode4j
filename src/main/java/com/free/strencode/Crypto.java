@@ -26,6 +26,9 @@ public class Crypto {
     //rust 函数映射
     public static native String decrypt(String scene, String ciphertext);
 
+    public static native String webEncrypt(String plaintext, int checktime, String keystr);
+    public static native String webDecrypt(String ciphertext, String keystr);
+
     //初始化
     public static void initLoad(String appName,String licenseKey,String url){
         Crypto.appName=appName;
