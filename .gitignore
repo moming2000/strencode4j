@@ -33,4 +33,5 @@ status
 catlogs
 rcache
 rust_jni.log
+**/.DS_Store
 
