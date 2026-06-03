@@ -29,6 +29,8 @@ public class Crypto {
     public static native String webEncrypt(String plaintext, int checktime, String keystr);
     public static native String webDecrypt(String ciphertext, String keystr);
 
+    public static native String getConfig(String key);
+
     public static BehaviorRiskScore.RiskResult behaviorRiskScore(String encodedBehavior, String keyStr){
         return BehaviorRiskScore.score(encodedBehavior,keyStr);
     }
